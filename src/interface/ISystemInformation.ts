@@ -1,21 +1,21 @@
 export interface ISystemInformation {
     
-    ComputerName: string,
-    IPAddress: string,
-    MacAddress: string,
-    OSName: string,
-    OSVersion: string,
-    OSArch: string,
-    RAMSize: string,
-    HardDiskSize: string,
-    CPUCores: number,
-    ProcessorId: string,
-    ProcessorName: string,
-    SerialNumber: string,
-    UniqueId: string,
-    ScreenSize: string,
-    DeviceType: DeviceType,
-    ISRdp: boolean
+    computer_name: string,
+    ip_address: string,
+    mac_address: string,
+    os_name: string,
+    os_version: string,
+    os_arch: string,
+    ram_size: string,
+    hard_disk_size: string,
+    cpu_cores: number,
+    processor_id: string,
+    processor_name: string,
+    serial_number: string,
+    unique_id: string,
+    screen_size: string,
+    device_type: DeviceType,
+    is_rdp: boolean
 }
 
 export enum DeviceType {

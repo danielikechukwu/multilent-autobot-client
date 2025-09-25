@@ -24,6 +24,8 @@ export class SystemInformationsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.callSystemInformation();
+
+    console.log("system component", this.systemInformation);
   }
 
   private callSystemInformation(): void {

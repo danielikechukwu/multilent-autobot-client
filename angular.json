@@ -71,7 +71,10 @@
               "buildTarget": "autobot-client:build:development"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "development",
+          "options": {
+            "allowedHosts": ["m1gciugaxg.eu.loclx.io", "snecked-shanel-unmannered.ngrok-free.dev" ]
+          }
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n"

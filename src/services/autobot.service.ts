@@ -44,18 +44,24 @@ export class AutobotService {
   }
 
   async invokeSystemInformationCommand(): Promise<any> {
+
+    const { invoke } = await import('@tauri-apps/api/core');
+
     if (!this.isTauri()) {
       return;
     }
-    console.log("invokeSystemInformationCommand");
+
     try {
       
-      const result: ISystemInformation | null = await this.tauriInvoke(
+      const result: ISystemInformation | null = await invoke(
         'get_system_info'
       );
-      console.log(result);
+
+      console.log("System command: ", result);
+      console.log("computer name is :", result?.computer_name);
 
       this.systemInformationSubject.next(result);
+
       return;
     } catch (error) {
       console.error('Error calling System information:', error);
@@ -83,6 +89,7 @@ export class AutobotService {
 
   listenForBackendEvents() {
     this.listenFnDnsQuery();
+    this.invokeSystemInformationCommand(); // Calling command
     // listen for another event
   }
 
