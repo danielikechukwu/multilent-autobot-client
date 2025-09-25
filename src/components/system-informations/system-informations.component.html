@@ -1,0 +1,25 @@
+<div class="information">
+    <h6>System Information</h6>
+    <div class="information-content">
+        <span>Computer Name :
+            @if(systemInformation.ComputerName){<span>{{systemInformation.ComputerName}}</span>}</span>
+        <span>IP Address : @if(systemInformation.IPAddress){<span>{{systemInformation.IPAddress}}</span>}</span>
+        <span>Mac Address : @if(systemInformation.MacAddress){<span>{{systemInformation.MacAddress}}</span>}</span>
+        <span>OS Name : @if(systemInformation.OSName){<span>{{systemInformation.OSName}}</span>}</span>
+        <span>OS Version : @if(systemInformation.OSVersion){<span>{{systemInformation.OSVersion}}</span>}</span>
+        <span>OS Arch : @if(systemInformation.OSArch){<span>{{systemInformation.OSArch}}</span>}</span>
+        <span>RAM Size : @if(systemInformation.RAMSize){<span>{{systemInformation.RAMSize}}</span>}</span>
+        <span>Hard Drive Size :
+            @if(systemInformation.HardDiskSize){<span>{{systemInformation.HardDiskSize}}</span>}</span>
+        <span>CPU : @if(systemInformation.CPUCores){<span>{{systemInformation.CPUCores}}</span>}</span>
+        <span>Processor ID : @if(systemInformation.ProcessorId){<span>{{systemInformation.ProcessorId}}</span>}</span>
+        <span>Processor Name :
+            @if(systemInformation.ProcessorName){<span>{{systemInformation.ProcessorName}}</span>}</span>
+        <span>Serial Number :
+            @if(systemInformation.SerialNumber){<span>{{systemInformation.SerialNumber}}</span>}</span>
+        <span>Unique ID : @if(systemInformation.UniqueId){<span>{{systemInformation.UniqueId}}</span>}</span>
+        <span>Screen Size : @if(systemInformation.ScreenSize){<span>{{systemInformation.ScreenSize}}</span>}</span>
+        <span>Device Type : @if(systemInformation.DeviceType){<span>{{systemInformation.DeviceType}}</span>}</span>
+        <span>IS RDP : @if(systemInformation.ISRdp){<span>{{systemInformation.ISRdp}}</span>}</span>
+    </div>
+</div>

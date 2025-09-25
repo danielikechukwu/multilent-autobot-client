@@ -1,0 +1,60 @@
+<div class="body">
+
+    <div class="main">
+
+        <div class="header">
+            <div></div>
+            <div>
+                <h6>EXAM STARTED</h6>
+            </div>
+            <div>
+                <span class="timer">
+                    <span>
+                        <fa-icon [icon]="faStopwatch"></fa-icon>
+                    </span>
+                    {{
+                    formatTime(timeLeft()) }}</span>
+            </div>
+        </div>
+
+        <div class="attempted-questions">
+            <div class="timer-container">
+                <div class="progress-bar" [style.width.%]="progress()"></div>
+            </div>
+            <div>
+                <span style="margin-right: 6px;">
+                    <fa-icon [icon]="faNoteSticky"></fa-icon>
+                </span>
+                <span>Attempts: {{ currentQuestion() }} of {{ totalQuestions }}</span>
+            </div>
+        </div>
+
+        <div class="content">
+
+            <div class="resource-monitor">
+                <app-resource-monitor></app-resource-monitor>
+            </div>
+            <div class="candidate-details">
+                <app-candidate-details></app-candidate-details>
+            </div>
+
+        </div>
+
+        <div class="status">
+            <div></div>
+            <div></div>
+            <div style="display: flex; align-items: center;">
+                <span>status : </span>
+                @if(isActive){
+                <button matButton="filled" class="active-btn"></button>
+                }
+                @else {
+                <button matButton="filled" class="inactive-btn"></button>
+                }
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
