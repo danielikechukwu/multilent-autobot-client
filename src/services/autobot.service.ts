@@ -47,7 +47,9 @@ export class AutobotService {
     if (!this.isTauri()) {
       return;
     }
+    console.log("invokeSystemInformationCommand");
     try {
+      
       const result: ISystemInformation | null = await this.tauriInvoke(
         'get_system_info'
       );
