@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import {
   BehaviorSubject,
   catchError,
@@ -17,6 +17,7 @@ import { IStartExamResponse } from '../interface/IStartExamResponse';
 import { IResourceMonitor } from '../interface/IResourceManagement';
 import { ICreateResourceManagement } from '../interface/ICreateResourceManagement';
 import { IResourceManagementResponse } from '../interface/IResourceManagementResponse';
+import { IMessage } from '../interface/IMessage';
 
 @Injectable({
   providedIn: 'root',
@@ -27,38 +28,47 @@ export class AutobotService {
 
   unlistenDnsQueryFns: any[] = [];
 
-  // unlistenServerDnsFns: any[] = [];
+  // Signals variable declarations
+  public startExamResponse = signal<IStartExamResponse | null>(null); // Start exam response
 
-  // Behaviour subject holding system information and it's observable that can be subscribe
+  public resourceManagementResponse = signal<IResourceManagementResponse | null>(null); // Resource monitor response
+
+  public resourceManagement = signal<IResourceMonitor | null>(null);
+
+  public systemInformation = signal<ISystemInformation | null>(null);
+
+  public dnsQuery = signal<string>('');
+
+    // Behaviour subject holding system information and it's observable that can be subscribe
   // to from anywhere in the application
   private systemInformationSubject =
     new BehaviorSubject<ISystemInformation | null>(null);
   public systemInformation$: Observable<ISystemInformation | null> =
     this.systemInformationSubject.asObservable();
 
-  // Behaviour subject holding resource monitor and it's observable that can be subscribe
-  // to from anywhere in the application
-  private resourceManagementSubject =
-    new BehaviorSubject<IResourceMonitor | null>(null);
-  public resourceManagement$: Observable<IResourceMonitor | null> =
-    this.resourceManagementSubject.asObservable();
-
-  // Behaviour subject holding dns query and it's observable that can be subscribe
+    // Behaviour subject holding dns query and it's observable that can be subscribe
   // to from anywhere in the application
   private dnsQuerySubject = new BehaviorSubject<string | null>(null);
   public dnsQuery$: Observable<string | null> =
     this.dnsQuerySubject.asObservable();
 
-  public startExamResponseSubject =
-    new BehaviorSubject<IStartExamResponse | null>(null);
-  public startExamResponse$: Observable<IStartExamResponse | null> =
-    this.startExamResponseSubject.asObservable();
+  // // Behaviour subject holding resource monitor and it's observable that can be subscribe
+  // // to from anywhere in the application
+  // private resourceManagementSubject =
+  //   new BehaviorSubject<IResourceMonitor | null>(null);
+  // public resourceManagement$: Observable<IResourceMonitor | null> =
+  //   this.resourceManagementSubject.asObservable();
 
-  // Retrieve the resource management response
-  public resourceManagementResponseSubject =
-    new BehaviorSubject<IResourceManagementResponse | null>(null);
-  public resourceManagmentResponse$: Observable<IResourceManagementResponse | null> =
-    this.resourceManagementResponseSubject.asObservable();
+  // public startExamResponseSubject =
+  //   new BehaviorSubject<IStartExamResponse | null>(null);
+  // public startExamResponse$: Observable<IStartExamResponse | null> =
+  //   this.startExamResponseSubject.asObservable();
+
+  // // Retrieve the resource management response
+  // public resourceManagementResponseSubject =
+  //   new BehaviorSubject<IResourceManagementResponse | null>(null);
+  // public resourceManagmentResponse$: Observable<IResourceManagementResponse | null> =
+  //   this.resourceManagementResponseSubject.asObservable();
 
   constructor(private httpClient: HttpClient) {}
 
@@ -91,6 +101,8 @@ export class AutobotService {
 
       this.systemInformationSubject.next(result);
 
+      this.systemInformation.set(result);
+
       return;
     } catch (error) {
       console.log(error);
@@ -111,7 +123,7 @@ export class AutobotService {
         'get_system_metrics'
       );
 
-      this.resourceManagementSubject.next(result);
+      //this.resourceManagementSubject.next(result);
 
       return result;
 
@@ -123,7 +135,7 @@ export class AutobotService {
   }
 
   // Poll every 30s with exponential backoff retry (4 attempts max)
-  pollResourceManagement(): Observable<IResourceMonitor | null> {
+  pollResourceManagementInformation(): Observable<IResourceMonitor | null> {
     return timer(0, 30000).pipe(
       switchMap(() =>
         from(this.invokeResourceManagementCommand()).pipe(
@@ -132,7 +144,7 @@ export class AutobotService {
             delay: (error, retryCount) => {
               const backoffTime = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s, 16s
               return timer(backoffTime); // return Observable, not number
-            }
+            },
           })
         )
       )
@@ -162,10 +174,11 @@ export class AutobotService {
     }
   }
 
-  candidateStartExam$(serverIpAddress: string,
+  startCandidateExam$(
+    serverIpAddress: string,
     candidateStartExam: ICandidateStartExam
-  ): Observable<IStartExamResponse | null> {
-    var candidateStartExam$: Observable<IStartExamResponse | null> =
+  ): Observable<IStartExamResponse> {
+    var candidateStartExam$: Observable<IStartExamResponse> =
       this.httpClient.post<IStartExamResponse>(
         `http://${serverIpAddress}:9090/exam/candidate/start`,
         candidateStartExam
@@ -185,6 +198,17 @@ export class AutobotService {
       );
 
     return resourceManagement$;
+  }
+
+  endCandidateExam$(
+    candidate_id: number,
+    serverIpAddress: string
+  ): Observable<IMessage> {
+    var endExam$: Observable<IMessage> = this.httpClient.get<IMessage>(
+      `http://${serverIpAddress}:9090/exam/candidate/end/${candidate_id}`
+    );
+
+    return endExam$;
   }
 
   listenForBackendEvents() {

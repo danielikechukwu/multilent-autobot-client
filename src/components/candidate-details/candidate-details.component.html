@@ -2,10 +2,10 @@
     <div class="card-body">
         <ol>
             <h6><strong>Candidate Details</strong></h6>
-            <li>Candidate ID : @if(startExam){<span>{{startExam.candidate_id}}</span>}</li>
-            <li>Subject : @if(startExam){<span>{{startExam.subject}}</span>}</li>
-            <li>Exam ID : @if(startExam){<span>{{startExam.exam_id}}</span>}</li>
-            <li>Session ID : @if(startExam){<span>{{startExam.session_id}}</span>}</li>
+            <li>Candidate ID : @if(startExam()){<span>{{startExam()?.candidate_id}}</span>}</li>
+            <li>Subject : @if(startExam()){<span>{{startExam()?.subject}}</span>}</li>
+            <li>Exam ID : @if(startExam()){<span>{{startExam()?.exam_id}}</span>}</li>
+            <li>Session ID : @if(startExam()){<span>{{startExam()?.session_id}}</span>}</li>
         </ol>
     </div>
 </div>

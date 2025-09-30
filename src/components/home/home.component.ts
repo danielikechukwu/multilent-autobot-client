@@ -6,7 +6,15 @@ import { Router } from '@angular/router';
 import { ISystemInformation } from '../../interface/ISystemInformation';
 import { ICandidateStartExam } from '../../interface/ICandidateStartExam';
 import { IStartExamResponse } from '../../interface/IStartExamResponse';
-import { catchError, concatMap, delay, of, Subscription } from 'rxjs';
+import {
+  catchError,
+  concatMap,
+  delay,
+  of,
+  Subscription,
+  switchMap,
+  timer,
+} from 'rxjs';
 
 @Component({
   selector: 'app-end-exam',
@@ -14,10 +22,8 @@ import { catchError, concatMap, delay, of, Subscription } from 'rxjs';
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
-
 export class HomeComponent implements OnInit, OnDestroy {
-  
-  candidateStartExamSubscription!: Subscription;
+  startCandidateExamSubscription!: Subscription;
   dnsQuerySubscription!: Subscription;
   public dnsQuery = signal<string>('');
   private autobotService = inject(AutobotService);
@@ -28,8 +34,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   constructor(private router: Router) {}
 
   ngOnDestroy(): void {
-    if (this.candidateStartExamSubscription) {
-      this.candidateStartExamSubscription.unsubscribe;
+    if (this.startCandidateExamSubscription) {
+      this.startCandidateExamSubscription.unsubscribe;
     }
 
     if (this.dnsQuerySubscription) {
@@ -44,21 +50,23 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   callDnsQuery(): void {
-    this.autobotService.dnsQuery$.subscribe((response: string | null) => {
-      if (response) {
-        if (response !== 'Failed') {
-          this.dnsQuery.set(response);
+    this.dnsQuerySubscription = this.autobotService.dnsQuery$.subscribe(
+      (response: string | null) => {
+        if (response) {
+          if (response !== 'Failed') {
+            this.dnsQuery.set(response);
 
-          this.callCandidateStartExam(); // Calling candidate start exam
-        } else {
-          this.dnsQuery.set(response);
+            this.callStartCandidateExam(); // Calling candidate start exam
+          } else {
+            this.dnsQuery.set(response);
+          }
         }
       }
-    });
+    );
   }
 
-  callCandidateStartExam(): void {
-    const candidateStartExam: ICandidateStartExam = {
+  callStartCandidateExam(): void {
+    const startCandidateExam: ICandidateStartExam = {
       ip_address: this.systemInformation.ip_address,
       computer_name: this.systemInformation.computer_name,
       mac_address: this.systemInformation.mac_address,
@@ -77,40 +85,32 @@ export class HomeComponent implements OnInit, OnDestroy {
       is_rdp: this.systemInformation.is_rdp,
     };
 
-    this.candidateStartExamSubscription = this.autobotService
-      .candidateStartExam$(this.dnsQuery(), candidateStartExam)
+    // Poll every 3sec
+    this.startCandidateExamSubscription = timer(0, 3000)
       .pipe(
-        catchError((error: Error) => {
-          console.error(error.message);
+        switchMap(() =>
+          this.autobotService
+            .startCandidateExam$(this.dnsQuery(), startCandidateExam)
+            .pipe(
+              catchError((error) => {
+                console.error('start candidate exam error', error);
 
-          // setInterval(() => {
-          //   this.callCandidateStartExam();
-          // }, 5000);
-
-          //this.isExamAvailable.set(false);
-          //this.callCandidateStartExam(); // Recall candidate exam till there is exam available
-
-          return of();
-        })
+                return of(null); // Keeps polling
+              })
+            )
+        )
       )
-      .subscribe((response: IStartExamResponse | null) => {
-        if (response) {
-          this.autobotService.startExamResponseSubject.next(response);
+      .subscribe((data: IStartExamResponse | null) => {
+        if (data) {
+          if (data.data) {
+            console.log('Candidate exam located polling stopped');
 
-          // Calling Resource Management command
-          this.autobotService.invokeResourceManagementCommand();
+            this.autobotService.startExamResponse.set(data); // Populate start exam reponse with start exam detail for candidate
 
-          if (!response.data) {
-            //this.isExamAvailable.set(false);
-            //this.callCandidateStartExam(); // Recall candidate exam till there is exam available
-
-            // setInterval(() => {
-            //   this.callCandidateStartExam();
-            // }, 5000); // Recall candidate exam till there is exam available
-
-          } else {
             setTimeout(() => {
               this.startExam();
+
+              this.startCandidateExamSubscription.unsubscribe();
             }, 3000);
           }
         }

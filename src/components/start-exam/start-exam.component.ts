@@ -16,9 +16,8 @@ import {
   faNoteSticky,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { IStartExamResponse } from '../../interface/IStartExamResponse';
 import { AutobotService } from '../../services/autobot.service';
-import { Subscription } from 'rxjs';
+import { catchError, of, Subscription } from 'rxjs';
 import { IResourceMonitor } from '../../interface/IResourceManagement';
 import { ICreateResourceManagement } from '../../interface/ICreateResourceManagement';
 import { IResourceManagementResponse } from '../../interface/IResourceManagementResponse';
@@ -38,17 +37,23 @@ export class StartExamComponent implements OnInit, OnDestroy {
   faStopwatch: IconDefinition = faStopwatch;
   faNoteSticky: IconDefinition = faNoteSticky;
 
-  startExamResponseSubscription!: Subscription;
-  startExamResponse = signal<IStartExamResponse | null>(null);
+  private autobotService = inject(AutobotService);
 
-  resourceManagementSubscription!: Subscription;
+  resourceManagement = signal<IResourceMonitor | null>(null);
+
+  dnsQuery = computed(() => this.autobotService.dnsQuery());
+
+  startExamResponse = computed(() => this.autobotService.startExamResponse());
+
+  pollResourceManagementSubscription!: Subscription;
+  resourceManagementResponse!: Subscription;
 
   //readonly totalTime: number = 30 * 60;
   readonly totalTime = signal<number>(
     Math.floor(
       this.startExamResponse()!.data?.time_started?.getTime()! / 1000
     ) +
-      3 * 60
+      30 * 60
   );
 
   readonly totalQuestions: number = 100;
@@ -61,7 +66,10 @@ export class StartExamComponent implements OnInit, OnDestroy {
 
   currentQuestion = computed(() =>
     Math.min(
-      Math.floor((this.totalTime() - this.timeLeft()) / 18) + 1,
+      Math.floor(
+        (this.totalTime() - this.timeLeft()) /
+          (this.totalTime() / this.totalQuestions)
+      ) + 1,
       this.totalQuestions
     )
   );
@@ -70,34 +78,26 @@ export class StartExamComponent implements OnInit, OnDestroy {
 
   private intervalId: any;
 
-  resourceManagement = signal<IResourceMonitor | null>(null);
-
-  private autobotService = inject(AutobotService);
-
-  dnsQuery = signal<string | null>(null);
-
   constructor(private ngZone: NgZone, private router: Router) {}
 
   ngOnDestroy(): void {
     this.stopTimer();
 
-    if (this.startExamResponseSubscription) {
-      this.startExamResponseSubscription.unsubscribe;
+    if (this.pollResourceManagementSubscription) {
+      this.pollResourceManagementSubscription.unsubscribe;
     }
 
-    if (this.resourceManagementSubscription) {
-      this.resourceManagementSubscription.unsubscribe;
+    if (this.resourceManagementResponse) {
+      this.resourceManagementResponse.unsubscribe;
     }
   }
 
   ngOnInit(): void {
     this.startTimer();
 
-    this.getStartExamResponse();
-
     // Polling resource management
-    this.resourceManagementSubscription = this.autobotService
-      .pollResourceManagement()
+    this.pollResourceManagementSubscription = this.autobotService
+      .pollResourceManagementInformation()
       .subscribe({
         next: (data: IResourceMonitor | null) => {
           if (data) {
@@ -111,8 +111,6 @@ export class StartExamComponent implements OnInit, OnDestroy {
           console.error('Polling stopped:', err);
         },
       });
-
-      this.callDnsQuery(); 
   }
 
   startTimer(): void {
@@ -127,7 +125,8 @@ export class StartExamComponent implements OnInit, OnDestroy {
             this.timeLeft.update((v) => v - 1);
           } else {
             this.stopTimer();
-            this.router.navigate(['/end-exam']);
+
+            this.endCandidateExam(); // End exam
           }
         });
       }, 1000);
@@ -141,6 +140,28 @@ export class StartExamComponent implements OnInit, OnDestroy {
     }
   }
 
+  endCandidateExam(): void {
+    this.autobotService
+      .endCandidateExam$(
+        this.startExamResponse()?.data?.candidate_id!,
+        this.dnsQuery()
+      )
+      .pipe(
+        catchError((error) => {
+          console.error('Error occurred ending exam', error);
+
+          this.router.navigate(['/end-exam']);
+
+          return of(null);
+        })
+      )
+      .subscribe((response) => {
+        if (response) {
+          this.router.navigate(['/end-exam']);
+        }
+      });
+  }
+
   formatTime(seconds: number): string {
     const m = Math.floor(seconds / 60)
       .toString()
@@ -149,29 +170,6 @@ export class StartExamComponent implements OnInit, OnDestroy {
     const s = (seconds % 60).toString().padStart(2, '0');
 
     return `${m}:${s}`;
-  }
-
-  getStartExamResponse(): void {
-    this.totalTime.set(30 * 60);
-
-    this.startExamResponseSubscription =
-      this.autobotService.startExamResponse$.subscribe(
-        (response: IStartExamResponse | null) => {
-          if (response) {
-            this.startExamResponse.set(response);
-          }
-        }
-      );
-  }
-
-    callDnsQuery(): void {
-    this.autobotService.dnsQuery$.subscribe((response: string | null) => {
-      if (response) {
-        if (response !== 'Failed') {
-          this.dnsQuery.set(response);
-        }
-      }
-    });
   }
 
   private postResourceManagement(): void {
@@ -186,18 +184,23 @@ export class StartExamComponent implements OnInit, OnDestroy {
       candidate_id: this.startExamResponse()?.data?.candidate_id!,
     };
 
-    this.autobotService
+    this.resourceManagementResponse = this.autobotService
       .postResourceManagement$(this.dnsQuery()!, responseManagement)
+      .pipe(
+        catchError((err) => {
+          console.error('No available resource response', err);
+
+          this.isActive.set(false);
+
+          return of();
+        })
+      )
       .subscribe((response: IResourceManagementResponse | null) => {
         if (response) {
-
           if (response.exam_status === StatusReport.Ended) {
-
             this.router.navigate(['/end-exam']);
           } else {
-            this.autobotService.resourceManagementResponseSubject.next(
-              response
-            );
+            this.autobotService.resourceManagementResponse.set(response);
           }
         } else {
           this.isActive.set(false);
