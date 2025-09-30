@@ -20,6 +20,6 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.autobotService.listenForBackendEvents();
 
-    this.autobotService.invokeSystemInformationCommand(); // Calling command
+    this.autobotService.invokeSystemInformationCommand(); // Calling system information command
   }
 }

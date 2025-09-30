@@ -8,8 +8,6 @@ import { ICandidateStartExam } from '../../interface/ICandidateStartExam';
 import { IStartExamResponse } from '../../interface/IStartExamResponse';
 import {
   catchError,
-  concatMap,
-  delay,
   of,
   Subscription,
   switchMap,
@@ -23,6 +21,7 @@ import {
   styleUrl: './home.component.scss',
 })
 export class HomeComponent implements OnInit, OnDestroy {
+
   startCandidateExamSubscription!: Subscription;
   dnsQuerySubscription!: Subscription;
   public dnsQuery = signal<string>('');
@@ -102,10 +101,13 @@ export class HomeComponent implements OnInit, OnDestroy {
       )
       .subscribe((data: IStartExamResponse | null) => {
         if (data) {
+
           if (data.data) {
             console.log('Candidate exam located polling stopped');
 
             this.autobotService.startExamResponse.set(data); // Populate start exam reponse with start exam detail for candidate
+
+            this.autobotService.invokeResourceManagementCommand(); // Execute resource management event, if exam exists.
 
             setTimeout(() => {
               this.startExam();

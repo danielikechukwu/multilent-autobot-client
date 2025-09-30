@@ -39,7 +39,9 @@ export class StartExamComponent implements OnInit, OnDestroy {
 
   private autobotService = inject(AutobotService);
 
-  resourceManagement = signal<IResourceMonitor | null>(null);
+  resourceManagementa = signal<IResourceMonitor | null>(null);
+
+  resourceManagement = computed(() => this.autobotService.resourceManagement());
 
   dnsQuery = computed(() => this.autobotService.dnsQuery());
 
@@ -101,7 +103,6 @@ export class StartExamComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (data: IResourceMonitor | null) => {
           if (data) {
-            this.resourceManagement.set(data);
 
             this.postResourceManagement(); // Calling resource management posting.
           }
@@ -173,6 +174,7 @@ export class StartExamComponent implements OnInit, OnDestroy {
   }
 
   private postResourceManagement(): void {
+    
     const responseManagement: ICreateResourceManagement = {
       ip_addr: this.resourceManagement()?.ip_addr!,
       cpu_usage: this.resourceManagement()?.cpu_usage!,

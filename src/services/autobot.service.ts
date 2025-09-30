@@ -52,24 +52,6 @@ export class AutobotService {
   public dnsQuery$: Observable<string | null> =
     this.dnsQuerySubject.asObservable();
 
-  // // Behaviour subject holding resource monitor and it's observable that can be subscribe
-  // // to from anywhere in the application
-  // private resourceManagementSubject =
-  //   new BehaviorSubject<IResourceMonitor | null>(null);
-  // public resourceManagement$: Observable<IResourceMonitor | null> =
-  //   this.resourceManagementSubject.asObservable();
-
-  // public startExamResponseSubject =
-  //   new BehaviorSubject<IStartExamResponse | null>(null);
-  // public startExamResponse$: Observable<IStartExamResponse | null> =
-  //   this.startExamResponseSubject.asObservable();
-
-  // // Retrieve the resource management response
-  // public resourceManagementResponseSubject =
-  //   new BehaviorSubject<IResourceManagementResponse | null>(null);
-  // public resourceManagmentResponse$: Observable<IResourceManagementResponse | null> =
-  //   this.resourceManagementResponseSubject.asObservable();
-
   constructor(private httpClient: HttpClient) {}
 
   private isTauri(): boolean {
@@ -123,7 +105,7 @@ export class AutobotService {
         'get_system_metrics'
       );
 
-      //this.resourceManagementSubject.next(result);
+      this.resourceManagement.set(result);
 
       return result;
 
@@ -162,7 +144,10 @@ export class AutobotService {
 
       const dnsQuery = await listen('dns::query', (event: any) => {
         if (event.payload.Success) {
+
           this.dnsQuerySubject.next(event.payload.Success);
+
+          this.dnsQuery.set(event.payload.Success);
         } else {
           this.dnsQuerySubject.next('Failed');
         }

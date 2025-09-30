@@ -27,26 +27,4 @@ export class ResourceMonitorComponent implements OnInit, OnDestroy {
 
   }
 
-  // private postResourceManagement(): void {
-
-  //   const responseManagement: ICreateResourceManagement = {
-  //     ip_addr: this.resourceManagement()?.ip_addr!,
-  //     cpu_usage: this.resourceManagement()?.cpu_usage!,
-  //     ram_usage: this.resourceManagement()?.ram_usage!,
-  //     exam_id: this.resourceManagement()?.exam_id!,
-  //     network_speed: this.resourceManagement()?.network_speed!,
-  //     disk_utility: this.resourceManagement()?.disk_utility!,
-  //     network_utilization: this.resourceManagement()?.network_utilization!,
-  //     candidate_id: this.startExam()?.candidate_id!,
-  //   };
-
-  //   this.autobotService
-  //     .postResourceManagement$(this.dnsQuery()!, responseManagement)
-  //     .subscribe((response: IResourceManagementResponse | null) => {
-  //       if (response) {
-  //         this.autobotService.resourceManagementResponseSubject.next(response);
-  //       }
-  //     });
-  // }
-
 }
