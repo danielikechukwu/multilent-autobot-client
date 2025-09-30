@@ -14,10 +14,12 @@ export class AppComponent implements OnInit, OnDestroy {
   constructor() {}
 
   ngOnDestroy(): void {
-    this.autobotService.unlistenBackendEvents();
+    this.autobotService.unlistenBackendEvents(); // Calling events
   }
 
   ngOnInit(): void {
     this.autobotService.listenForBackendEvents();
+
+    this.autobotService.invokeSystemInformationCommand(); // Calling command
   }
 }

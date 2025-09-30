@@ -1,7 +1,22 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import {
+  BehaviorSubject,
+  catchError,
+  from,
+  Observable,
+  timer,
+  throwError,
+  scan,
+  delay,
+} from 'rxjs';
+import { switchMap, retry } from 'rxjs/operators';
 import { ISystemInformation } from '../interface/ISystemInformation';
-import { IDnsQueryStatus } from '../interface/IDnsQuery';
+import { HttpClient } from '@angular/common/http';
+import { ICandidateStartExam } from '../interface/ICandidateStartExam';
+import { IStartExamResponse } from '../interface/IStartExamResponse';
+import { IResourceMonitor } from '../interface/IResourceManagement';
+import { ICreateResourceManagement } from '../interface/ICreateResourceManagement';
+import { IResourceManagementResponse } from '../interface/IResourceManagementResponse';
 
 @Injectable({
   providedIn: 'root',
@@ -9,7 +24,10 @@ import { IDnsQueryStatus } from '../interface/IDnsQuery';
 export class AutobotService {
   tauriInvoke: any | null;
   tauriListen: any | null;
-  unlistenFns: any[] = [];
+
+  unlistenDnsQueryFns: any[] = [];
+
+  // unlistenServerDnsFns: any[] = [];
 
   // Behaviour subject holding system information and it's observable that can be subscribe
   // to from anywhere in the application
@@ -18,13 +36,31 @@ export class AutobotService {
   public systemInformation$: Observable<ISystemInformation | null> =
     this.systemInformationSubject.asObservable();
 
+  // Behaviour subject holding resource monitor and it's observable that can be subscribe
+  // to from anywhere in the application
+  private resourceManagementSubject =
+    new BehaviorSubject<IResourceMonitor | null>(null);
+  public resourceManagement$: Observable<IResourceMonitor | null> =
+    this.resourceManagementSubject.asObservable();
+
   // Behaviour subject holding dns query and it's observable that can be subscribe
   // to from anywhere in the application
-  private dnsQuerySubject = new BehaviorSubject<IDnsQueryStatus | null>(null);
-  public dnsQuery$: Observable<IDnsQueryStatus | null> =
+  private dnsQuerySubject = new BehaviorSubject<string | null>(null);
+  public dnsQuery$: Observable<string | null> =
     this.dnsQuerySubject.asObservable();
 
-  constructor() {}
+  public startExamResponseSubject =
+    new BehaviorSubject<IStartExamResponse | null>(null);
+  public startExamResponse$: Observable<IStartExamResponse | null> =
+    this.startExamResponseSubject.asObservable();
+
+  // Retrieve the resource management response
+  public resourceManagementResponseSubject =
+    new BehaviorSubject<IResourceManagementResponse | null>(null);
+  public resourceManagmentResponse$: Observable<IResourceManagementResponse | null> =
+    this.resourceManagementResponseSubject.asObservable();
+
+  constructor(private httpClient: HttpClient) {}
 
   private isTauri(): boolean {
     return !!(window as any).__TAURI_INTERNALS__;
@@ -44,7 +80,6 @@ export class AutobotService {
   }
 
   async invokeSystemInformationCommand(): Promise<any> {
-
     const { invoke } = await import('@tauri-apps/api/core');
 
     if (!this.isTauri()) {
@@ -52,49 +87,113 @@ export class AutobotService {
     }
 
     try {
-      
-      const result: ISystemInformation | null = await invoke(
-        'get_system_info'
-      );
-
-      console.log("System command: ", result);
-      console.log("computer name is :", result?.computer_name);
+      const result: ISystemInformation | null = await invoke('get_system_info');
 
       this.systemInformationSubject.next(result);
 
       return;
     } catch (error) {
-      console.error('Error calling System information:', error);
+      console.log(error);
+
       throw error;
     }
   }
 
+  async invokeResourceManagementCommand(): Promise<any> {
+    const { invoke } = await import('@tauri-apps/api/core');
+
+    if (!this.isTauri()) {
+      return;
+    }
+
+    try {
+      const result: IResourceMonitor | null = await invoke(
+        'get_system_metrics'
+      );
+
+      this.resourceManagementSubject.next(result);
+
+      return result;
+
+    } catch (error) {
+      console.error('Error invoking resource Tauri command:', error);
+
+      throw error;
+    }
+  }
+
+  // Poll every 30s with exponential backoff retry (4 attempts max)
+  pollResourceManagement(): Observable<IResourceMonitor | null> {
+    return timer(0, 30000).pipe(
+      switchMap(() =>
+        from(this.invokeResourceManagementCommand()).pipe(
+          retry({
+            count: 4, // max retries
+            delay: (error, retryCount) => {
+              const backoffTime = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s, 16s
+              return timer(backoffTime); // return Observable, not number
+            }
+          })
+        )
+      )
+    );
+  }
+
   async listenFnDnsQuery() {
+    const { listen } = await import('@tauri-apps/api/event');
+
     if (!this.isTauri()) {
       return;
     }
     try {
-      await this.getTauriApis();
+      //await this.getTauriApis();
 
-      const unlisten = await this.tauriListen('dns::query', (event: any) => {
-        console.log({ event });
-        //this.hasDnsQuery$.next(true);
-        this.dnsQuerySubject.next(event.payload);
+      const dnsQuery = await listen('dns::query', (event: any) => {
+        if (event.payload.Success) {
+          this.dnsQuerySubject.next(event.payload.Success);
+        } else {
+          this.dnsQuerySubject.next('Failed');
+        }
       });
-      this.unlistenFns.push(unlisten);
+
+      this.unlistenDnsQueryFns.push(dnsQuery);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   }
 
+  candidateStartExam$(serverIpAddress: string,
+    candidateStartExam: ICandidateStartExam
+  ): Observable<IStartExamResponse | null> {
+    var candidateStartExam$: Observable<IStartExamResponse | null> =
+      this.httpClient.post<IStartExamResponse>(
+        `http://${serverIpAddress}:9090/exam/candidate/start`,
+        candidateStartExam
+      );
+
+    return candidateStartExam$;
+  }
+
+  postResourceManagement$(
+    serverIpAddress: string,
+    resourceManagement: ICreateResourceManagement
+  ): Observable<IResourceManagementResponse | null> {
+    var resourceManagement$: Observable<IResourceManagementResponse | null> =
+      this.httpClient.post<IResourceManagementResponse | null>(
+        `http://${serverIpAddress}:9090/exam/resource/monitor`,
+        resourceManagement
+      );
+
+    return resourceManagement$;
+  }
+
   listenForBackendEvents() {
-    this.listenFnDnsQuery();
-    this.invokeSystemInformationCommand(); // Calling command
-    // listen for another event
+    this.listenFnDnsQuery(); // Listening to event
   }
 
   unlistenBackendEvents() {
-    this.unlistenFns.forEach((unlisten) => unlisten());
-    this.unlistenFns = [];
+    // DNS Query
+    this.unlistenDnsQueryFns.forEach((unlisten) => unlisten());
+    this.unlistenDnsQueryFns = [];
   }
 }

@@ -2,10 +2,10 @@
     <div class="card-body">
         <ol>
             <h6><strong>Candidate Details</strong></h6>
-            <li>Name : @if(dnsQuery.Success.ExamStatus){<span>{{dnsQuery.Success.ExamStatus.Name}}</span>}</li>
-            <li>Registration No : @if(dnsQuery.Success.ExamStatus){<span>{{dnsQuery.Success.ExamStatus.RegistrationNumber}}</span>}</li>
-            <li>Subject : @if(dnsQuery.Success.ExamStatus){<span>{{dnsQuery.Success.ExamStatus.Subject}}</span>}</li>
-            <li>Exam ID : @if(dnsQuery.Success.ExamStatus){<span>{{dnsQuery.Success.ExamStatus.ExamId}}</span>}</li>
+            <li>Candidate ID : @if(startExam){<span>{{startExam.candidate_id}}</span>}</li>
+            <li>Subject : @if(startExam){<span>{{startExam.subject}}</span>}</li>
+            <li>Exam ID : @if(startExam){<span>{{startExam.exam_id}}</span>}</li>
+            <li>Session ID : @if(startExam){<span>{{startExam.session_id}}</span>}</li>
         </ol>
     </div>
 </div>

@@ -7,19 +7,50 @@
 
         <div class="right-content">
 
+            @if(dnsQuery()){
+
+            @if(dnsQuery() !== 'Failed'){
+
             <div class="alert alert-success" role="alert">
-                <span>Locating Server...</span> <br />
-                <span>Server located on @if(dnsQuery.Success){<span>{{dnsQuery.Success.IPAddress}}</span>}</span>
+                <span>Server Located on : {{dnsQuery()}}</span>
             </div>
 
-            @if(dnsQuery.Success.ExamStatus) {
-            <div class="content-body">
-                <span class="exam-available">Loading...</span>
+            @if(isExamAvailable()){
+            <div class="searching-exam">
+                <div class="spinner-border" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+
+                <span>Searching Exam</span>
             </div>
+
             }
             @else {
-            <div class="content-body">
-                <span class="exam-unavailable">Sorry, No active exam available</span>
+            <div>
+                <span class="exam-unavailable">No available exam</span>
+            </div>
+            }
+
+            }
+            @else if(dnsQuery() == 'Failed') {
+            <div>
+                <div class="alert alert-danger" role="alert">
+                    <span>No Available Server located</span>
+                </div>
+
+                <span class="ban-icon">
+                    <img src="images/server-unavailable.png" />
+                </span>
+            </div>
+            }
+            }
+            @else {
+            <div class="loading">
+                <div class="spinner-border" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+
+                <span>Locating Server ...</span>
             </div>
             }
 

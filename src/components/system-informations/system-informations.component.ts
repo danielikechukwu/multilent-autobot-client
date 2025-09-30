@@ -19,17 +19,15 @@ export class SystemInformationsComponent implements OnInit, OnDestroy {
   constructor() {}
 
   ngOnDestroy(): void {
-    this.systemInformationSubscription.unsubscribe();
+    this.systemInformationSubscription.unsubscribe;
   }
 
   ngOnInit(): void {
     this.callSystemInformation();
-
-    console.log("system component", this.systemInformation);
   }
 
   private callSystemInformation(): void {
-    this.autobotService.systemInformation$.subscribe(
+    this.systemInformationSubscription = this.autobotService.systemInformation$.subscribe(
       (response: ISystemInformation | null) => {
         if (response) {
           this.systemInformation = response;

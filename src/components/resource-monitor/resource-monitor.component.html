@@ -2,12 +2,12 @@
     <div class="card-body">
         <ol>
             <h6><strong>Resource Management</strong></h6>
-            <li>IP Address : 142ASDSWW </li>
-            <li>System Type : Windows LLM</li>
-            <li>CPU Usage : 512 GB</li>
-            <li>RAM Usage : 42 GB </li>
-            <li>Disk Usage : 43 MB </li>
-            <li>Network Utilization : 54MB/S </li>
+            <li>IP Address : @if(resourceManagement()) {<span>{{resourceManagement()?.ip_addr}}</span>} </li>
+            <li>System Type : @if(systemInformation()) {<span>{{systemInformation()?.os_name}}</span>}</li>
+            <li>CPU Usage : @if(resourceManagement()) {<span>{{resourceManagement()?.cpu_usage}}</span>}</li>
+            <li>RAM Usage : @if(resourceManagement()) {<span>{{resourceManagement()?.ram_usage}}</span>} </li>
+            <li>Disk Usage : @if(resourceManagement()) {<span>{{resourceManagement()?.disk_utility}}</span>} </li>
+            <li>Network Utilization : @if(resourceManagement()) {<span>{{resourceManagement()?.network_utilization}}</span>} </li>
         </ol>
     </div>
 </div>

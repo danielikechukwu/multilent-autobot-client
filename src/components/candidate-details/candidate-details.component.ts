@@ -1,36 +1,40 @@
 import { Component, inject } from '@angular/core';
 import { AutobotService } from '../../services/autobot.service';
 import { Subscription } from 'rxjs';
-import { IDnsQueryStatus } from '../../interface/IDnsQuery';
+import { IStartExamResponse } from '../../interface/IStartExamResponse';
+import { IStartExam } from '../../interface/IStartExam';
 
 @Component({
   selector: 'app-candidate-details',
   imports: [],
   templateUrl: './candidate-details.component.html',
-  styleUrl: './candidate-details.component.scss'
+  styleUrl: './candidate-details.component.scss',
 })
 export class CandidateDetailsComponent {
-
   private autobotService = inject(AutobotService);
-  private dnsQuerySubscription!: Subscription;
-  dnsQuery!: IDnsQueryStatus;
+
+  startExamResponseSubscription!: Subscription;
+
+  startExam!: IStartExam;
 
   ngOnDestroy(): void {
-    this.dnsQuerySubscription.unsubscribe();
+    if (this.startExamResponseSubscription) {
+      this.startExamResponseSubscription.unsubscribe();
+    }
   }
 
   ngOnInit(): void {
-    this.callDnsQuery();
+    this.getStartExamResponse(); // Getting start exam response
   }
 
-  private callDnsQuery(): void {
-    this.dnsQuerySubscription = this.autobotService.dnsQuery$.subscribe(
-      (response: IDnsQueryStatus | null) => {
-        if (response) {
-          this.dnsQuery = response;
+  getStartExamResponse(): void {
+    this.startExamResponseSubscription =
+      this.autobotService.startExamResponse$.subscribe(
+        (response: IStartExamResponse | null) => {
+          if (response) {
+            this.startExam = response.data!;
+          }
         }
-      }
-    );
+      );
   }
-
 }
