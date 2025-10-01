@@ -6,13 +6,7 @@ import { Router } from '@angular/router';
 import { ISystemInformation } from '../../interface/ISystemInformation';
 import { ICandidateStartExam } from '../../interface/ICandidateStartExam';
 import { IStartExamResponse } from '../../interface/IStartExamResponse';
-import {
-  catchError,
-  of,
-  Subscription,
-  switchMap,
-  timer,
-} from 'rxjs';
+import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 
 @Component({
   selector: 'app-end-exam',
@@ -21,7 +15,6 @@ import {
   styleUrl: './home.component.scss',
 })
 export class HomeComponent implements OnInit, OnDestroy {
-
   startCandidateExamSubscription!: Subscription;
   dnsQuerySubscription!: Subscription;
   public dnsQuery = signal<string>('');
@@ -101,19 +94,22 @@ export class HomeComponent implements OnInit, OnDestroy {
       )
       .subscribe((data: IStartExamResponse | null) => {
         if (data) {
-
           if (data.data) {
+            
             console.log('Candidate exam located polling stopped');
+            console.log('Exam details: ', data.data);
 
             this.autobotService.startExamResponse.set(data); // Populate start exam reponse with start exam detail for candidate
 
             this.autobotService.invokeResourceManagementCommand(); // Execute resource management event, if exam exists.
 
             setTimeout(() => {
-              this.startExam();
-
               this.startCandidateExamSubscription.unsubscribe();
+
+              this.startExam();
             }, 3000);
+          } else {
+            console.log('No candidate exam exists', data);
           }
         }
       });

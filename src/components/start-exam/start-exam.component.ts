@@ -39,8 +39,6 @@ export class StartExamComponent implements OnInit, OnDestroy {
 
   private autobotService = inject(AutobotService);
 
-  resourceManagementa = signal<IResourceMonitor | null>(null);
-
   resourceManagement = computed(() => this.autobotService.resourceManagement());
 
   dnsQuery = computed(() => this.autobotService.dnsQuery());
@@ -50,13 +48,13 @@ export class StartExamComponent implements OnInit, OnDestroy {
   pollResourceManagementSubscription!: Subscription;
   resourceManagementResponse!: Subscription;
 
-  //readonly totalTime: number = 30 * 60;
-  readonly totalTime = signal<number>(
-    Math.floor(
-      this.startExamResponse()!.data?.time_started?.getTime()! / 1000
-    ) +
-      30 * 60
-  );
+  readonly totalTime = signal<number>(3 * 60); // 30 minutes in seconds
+  // readonly totalTime = signal<number>(
+  //   Math.floor(
+  //     this.startExamResponse()!.data?.time_started?.getTime()! / 1000
+  //   ) +
+  //     30 * 60
+  // );
 
   readonly totalQuestions: number = 100;
 
@@ -95,6 +93,7 @@ export class StartExamComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+
     this.startTimer();
 
     // Polling resource management
@@ -103,6 +102,7 @@ export class StartExamComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (data: IResourceMonitor | null) => {
           if (data) {
+            console.log('Polling Resource Management');
 
             this.postResourceManagement(); // Calling resource management posting.
           }
@@ -174,17 +174,19 @@ export class StartExamComponent implements OnInit, OnDestroy {
   }
 
   private postResourceManagement(): void {
-    
+
     const responseManagement: ICreateResourceManagement = {
       ip_addr: this.resourceManagement()?.ip_addr!,
       cpu_usage: this.resourceManagement()?.cpu_usage!,
       ram_usage: this.resourceManagement()?.ram_usage!,
-      exam_id: this.resourceManagement()?.exam_id!,
+      exam_id: this.startExamResponse()?.data?.exam_id!,
       network_speed: this.resourceManagement()?.network_speed!,
       disk_utility: this.resourceManagement()?.disk_utility!,
       network_utilization: this.resourceManagement()?.network_utilization!,
       candidate_id: this.startExamResponse()?.data?.candidate_id!,
     };
+
+    console.log('Posting Resource Management: ', responseManagement);
 
     this.resourceManagementResponse = this.autobotService
       .postResourceManagement$(this.dnsQuery()!, responseManagement)
@@ -199,9 +201,18 @@ export class StartExamComponent implements OnInit, OnDestroy {
       )
       .subscribe((response: IResourceManagementResponse | null) => {
         if (response) {
+
+          console.log('Exam status: ', response.exam_status);
+
+          console.log('Resource Response: ', response);
+          
           if (response.exam_status === StatusReport.Ended) {
+
             this.router.navigate(['/end-exam']);
           } else {
+
+            console.log('Resource Management response: ', response);
+
             this.autobotService.resourceManagementResponse.set(response);
           }
         } else {

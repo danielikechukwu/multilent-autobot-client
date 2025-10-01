@@ -1,13 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 import {
   BehaviorSubject,
-  catchError,
   from,
   Observable,
   timer,
-  throwError,
-  scan,
-  delay,
 } from 'rxjs';
 import { switchMap, retry } from 'rxjs/operators';
 import { ISystemInformation } from '../interface/ISystemInformation';
