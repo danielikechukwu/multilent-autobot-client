@@ -6,3 +6,9 @@ export interface IResourceManagementResponse {
     exam_status: string,
     response: IMessage,
 }
+
+export interface IResourceManagementResponseState {
+    
+    errors: number;
+    value: IResourceManagementResponse | null;
+}

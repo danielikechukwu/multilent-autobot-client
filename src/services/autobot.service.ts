@@ -1,16 +1,14 @@
 import { Injectable, signal } from '@angular/core';
-import {
-  BehaviorSubject,
-  from,
-  Observable,
-  timer,
-} from 'rxjs';
-import { switchMap, retry } from 'rxjs/operators';
+import { BehaviorSubject, from, Observable, of, timer } from 'rxjs';
+import { switchMap, catchError, scan, takeWhile } from 'rxjs/operators';
 import { ISystemInformation } from '../interface/ISystemInformation';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { ICandidateStartExam } from '../interface/ICandidateStartExam';
 import { IStartExamResponse } from '../interface/IStartExamResponse';
-import { IResourceMonitor } from '../interface/IResourceManagement';
+import {
+  IResourceMonitor,
+  IResourceMonitorState,
+} from '../interface/IResourceManagement';
 import { ICreateResourceManagement } from '../interface/ICreateResourceManagement';
 import { IResourceManagementResponse } from '../interface/IResourceManagementResponse';
 import { IMessage } from '../interface/IMessage';
@@ -27,7 +25,8 @@ export class AutobotService {
   // Signals variable declarations
   public startExamResponse = signal<IStartExamResponse | null>(null); // Start exam response
 
-  public resourceManagementResponse = signal<IResourceManagementResponse | null>(null); // Resource monitor response
+  public resourceManagementResponse =
+    signal<IResourceManagementResponse | null>(null); // Resource monitor response
 
   public resourceManagement = signal<IResourceMonitor | null>(null);
 
@@ -35,14 +34,14 @@ export class AutobotService {
 
   public dnsQuery = signal<string>('');
 
-    // Behaviour subject holding system information and it's observable that can be subscribe
+  // Behaviour subject holding system information and it's observable that can be subscribe
   // to from anywhere in the application
   private systemInformationSubject =
     new BehaviorSubject<ISystemInformation | null>(null);
   public systemInformation$: Observable<ISystemInformation | null> =
     this.systemInformationSubject.asObservable();
 
-    // Behaviour subject holding dns query and it's observable that can be subscribe
+  // Behaviour subject holding dns query and it's observable that can be subscribe
   // to from anywhere in the application
   private dnsQuerySubject = new BehaviorSubject<string | null>(null);
   public dnsQuery$: Observable<string | null> =
@@ -97,14 +96,11 @@ export class AutobotService {
     }
 
     try {
-      const result: IResourceMonitor | null = await invoke(
-        'get_system_metrics'
-      );
+      const result: IResourceMonitor = await invoke('get_system_metrics');
 
       this.resourceManagement.set(result);
 
       return result;
-
     } catch (error) {
       console.error('Error invoking resource Tauri command:', error);
 
@@ -112,20 +108,36 @@ export class AutobotService {
     }
   }
 
-  // Poll every 30s with exponential backoff retry (4 attempts max)
-  pollResourceManagementInformation(): Observable<IResourceMonitor | null> {
-    return timer(0, 30000).pipe(
+  pollResourceManagementInformation(): Observable<IResourceMonitorState> {
+    return timer(0, 60000).pipe(
       switchMap(() =>
         from(this.invokeResourceManagementCommand()).pipe(
-          retry({
-            count: 4, // max retries
-            delay: (error, retryCount) => {
-              const backoffTime = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s, 16s
-              return timer(backoffTime); // return Observable, not number
-            },
+          catchError((error: any) => {
+            if (error instanceof HttpErrorResponse) {
+              console.log('ERROR FROM SERVER');
+              return of(null);
+            } else if (error instanceof ProgressEvent) {
+              console.log('CORS ERROR');
+              return of(null);
+            } else {
+              return of(null);
+            }
           })
         )
-      )
+      ),
+      scan(
+        (acc, result) => {
+          if (result === null) {
+            // increase consecutive error count
+            return { errors: acc.errors + 1, value: null };
+          } else {
+            // reset error count on success
+            return { errors: 0, value: result };
+          }
+        },
+        { errors: 0, value: null as IResourceMonitor | null }
+      ),
+      takeWhile((state) => state.errors < 4, true) // stop after 4 errors
     );
   }
 
@@ -140,7 +152,6 @@ export class AutobotService {
 
       const dnsQuery = await listen('dns::query', (event: any) => {
         if (event.payload.Success) {
-
           this.dnsQuerySubject.next(event.payload.Success);
 
           this.dnsQuery.set(event.payload.Success);

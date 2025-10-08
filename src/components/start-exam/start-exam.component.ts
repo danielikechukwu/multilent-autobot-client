@@ -17,11 +17,20 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { AutobotService } from '../../services/autobot.service';
-import { catchError, of, Subscription } from 'rxjs';
-import { IResourceMonitor } from '../../interface/IResourceManagement';
+import { catchError, map, of, scan, Subscription, takeWhile } from 'rxjs';
+import {
+  IResourceMonitor,
+  IResourceMonitorState,
+} from '../../interface/IResourceManagement';
 import { ICreateResourceManagement } from '../../interface/ICreateResourceManagement';
-import { IResourceManagementResponse } from '../../interface/IResourceManagementResponse';
+import {
+  IResourceManagementResponse,
+  IResourceManagementResponseState,
+} from '../../interface/IResourceManagementResponse';
 import { StatusReport } from '../../enums/StatusReport';
+import { InactiveComponent } from '../modal/inactive.component';
+import { MatDialog } from '@angular/material/dialog';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-start-exam',
@@ -48,13 +57,15 @@ export class StartExamComponent implements OnInit, OnDestroy {
   pollResourceManagementSubscription!: Subscription;
   resourceManagementResponse!: Subscription;
 
-  readonly totalTime = signal<number>(3 * 60); // 30 minutes in seconds
-  // readonly totalTime = signal<number>(
-  //   Math.floor(
-  //     this.startExamResponse()!.data?.time_started?.getTime()! / 1000
-  //   ) +
-  //     30 * 60
-  // );
+  //readonly totalTime = signal<number>(3 * 60); // 30 minutes in seconds
+
+  readonly totalTime = signal<number>(
+    Math.floor(
+      new Date(this.startExamResponse()!.data?.time_started!).getSeconds() /
+        1000
+    ) +
+      30 * 60
+  );
 
   readonly totalQuestions: number = 100;
 
@@ -78,7 +89,11 @@ export class StartExamComponent implements OnInit, OnDestroy {
 
   private intervalId: any;
 
-  constructor(private ngZone: NgZone, private router: Router) {}
+  constructor(
+    private ngZone: NgZone,
+    private router: Router,
+    private matDialog: MatDialog
+  ) {}
 
   ngOnDestroy(): void {
     this.stopTimer();
@@ -93,23 +108,29 @@ export class StartExamComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-
     this.startTimer();
 
     // Polling resource management
     this.pollResourceManagementSubscription = this.autobotService
       .pollResourceManagementInformation()
       .subscribe({
-        next: (data: IResourceMonitor | null) => {
-          if (data) {
+        next: (data: IResourceMonitorState) => {
+          if (data.errors === 4) {
+            //  Open modal when error count = 4
+            this.isActive.set(false);
+
+            this.stopTimer();
+
+            this.matDialog.open(InactiveComponent, {
+              disableClose: true,
+            });
+          }
+
+          if (data.value) {
             console.log('Polling Resource Management');
 
             this.postResourceManagement(); // Calling resource management posting.
           }
-        },
-        error: (err) => {
-          this.isActive.set(false);
-          console.error('Polling stopped:', err);
         },
       });
   }
@@ -174,8 +195,8 @@ export class StartExamComponent implements OnInit, OnDestroy {
   }
 
   private postResourceManagement(): void {
-
     const responseManagement: ICreateResourceManagement = {
+      unique_id: this.resourceManagement()?.unique_id!,
       ip_addr: this.resourceManagement()?.ip_addr!,
       cpu_usage: this.resourceManagement()?.cpu_usage!,
       ram_usage: this.resourceManagement()?.ram_usage!,
@@ -191,33 +212,63 @@ export class StartExamComponent implements OnInit, OnDestroy {
     this.resourceManagementResponse = this.autobotService
       .postResourceManagement$(this.dnsQuery()!, responseManagement)
       .pipe(
-        catchError((err) => {
-          console.error('No available resource response', err);
-
-          this.isActive.set(false);
-
-          return of();
-        })
-      )
-      .subscribe((response: IResourceManagementResponse | null) => {
-        if (response) {
-
-          console.log('Exam status: ', response.exam_status);
-
-          console.log('Resource Response: ', response);
-          
-          if (response.exam_status === StatusReport.Ended) {
-
-            this.router.navigate(['/end-exam']);
+        catchError((error: any) => {
+          if (error instanceof HttpErrorResponse) {
+            console.log('ERROR FROM SERVER')
+            return of(null);
+          } else if (error instanceof ProgressEvent) {
+            console.log('CORS ERROR')
+            return of(null);
           } else {
-
-            console.log('Resource Management response: ', response);
-
-            this.autobotService.resourceManagementResponse.set(response);
+            return of(null);
           }
-        } else {
-          this.isActive.set(false);
-        }
+        }),
+        scan(
+          (acc, result) => {
+            if (result === null) {
+              // increase consecutive error count
+              return { errors: acc.errors + 1, value: null };
+            } else {
+              // reset error count on success
+              return { errors: 0, value: result };
+            }
+          },
+          { errors: 0, value: null as IResourceManagementResponse | null }
+        ),
+        takeWhile((state) => state.errors < 4, true) // stop after 4 errors
+      )
+      .subscribe({
+        next: (response: IResourceManagementResponseState) => {
+          if (response.errors === 4) {
+            //  Open modal when error count = 4
+            this.isActive.set(false);
+
+            this.stopTimer();
+
+            this.matDialog.open(InactiveComponent, {
+              disableClose: true,
+            });
+          }
+
+          if (response.value) {
+            console.log('Exam status: ', response.value.exam_status);
+
+            console.log('Resource Response: ', response);
+
+            if (response.value.exam_status === StatusReport.Ended) {
+              this.router.navigate(['/end-exam']);
+            } else {
+              console.log('Resource Management response: ', response.value);
+
+              this.autobotService.resourceManagementResponse.set(
+                response.value
+              );
+            }
+          }
+        },
+        error: (err: HttpErrorResponse) => {
+          console.log(err.message);
+        },
       });
   }
 }

@@ -7,6 +7,8 @@ import { ISystemInformation } from '../../interface/ISystemInformation';
 import { ICandidateStartExam } from '../../interface/ICandidateStartExam';
 import { IStartExamResponse } from '../../interface/IStartExamResponse';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
+import { InactiveComponent } from '../modal/inactive.component';
 
 @Component({
   selector: 'app-end-exam',
@@ -23,7 +25,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   systemInformation!: ISystemInformation;
   isExamAvailable = signal<boolean>(true);
 
-  constructor(private router: Router) {}
+  constructor(private router: Router, private matDialog: MatDialog) {}
 
   ngOnDestroy(): void {
     if (this.startCandidateExamSubscription) {
@@ -94,8 +96,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       )
       .subscribe((data: IStartExamResponse | null) => {
         if (data) {
+          
           if (data.data) {
-            
+
             console.log('Candidate exam located polling stopped');
             console.log('Exam details: ', data.data);
 
@@ -103,11 +106,12 @@ export class HomeComponent implements OnInit, OnDestroy {
 
             this.autobotService.invokeResourceManagementCommand(); // Execute resource management event, if exam exists.
 
-            setTimeout(() => {
-              this.startCandidateExamSubscription.unsubscribe();
+            this.startCandidateExamSubscription.unsubscribe();
 
+            setTimeout(() => {  
               this.startExam();
-            }, 3000);
+            }, 2000);
+
           } else {
             console.log('No candidate exam exists', data);
           }
@@ -125,7 +129,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
-  startExam() {
+  startExam(): void {
     this.router.navigate(['/start-exam']);
   }
+
 }

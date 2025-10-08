@@ -4,5 +4,5 @@ export interface IStartExam {
     exam_id: string,
     session_id: string,
     subject: string,
-    time_started: Date | null,
+    time_started: string,
 }
